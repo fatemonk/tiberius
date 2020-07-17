@@ -4,6 +4,7 @@ use crate::{
     FromSql,
 };
 use std::{fmt::Display, sync::Arc};
+use serde::{Serialize, Deserialize};
 
 /// A column of data from a query.
 #[derive(Debug)]
@@ -24,7 +25,7 @@ impl Column {
     }
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
 /// The type of the column.
 pub enum ColumnType {
     /// The column doesn't have a specified type.

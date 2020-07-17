@@ -2,6 +2,7 @@
 use super::codec::Encode;
 use bytes::{BufMut, BytesMut};
 use std::sync::Arc;
+use serde::{Serialize, Serializer};
 
 /// Provides information of the location for the schema.
 #[derive(Debug, Clone, PartialEq)]
@@ -101,5 +102,14 @@ impl Encode<BytesMut> for XmlData {
         dst.put_u32_le(0);
 
         Ok(())
+    }
+}
+
+impl Serialize for XmlData {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        serializer.serialize_str(&self.data.to_string())
     }
 }

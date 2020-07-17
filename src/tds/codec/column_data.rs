@@ -15,10 +15,11 @@ use encoding::DecoderTrap;
 use futures::io::AsyncReadExt;
 use std::{borrow::Cow, sync::Arc};
 use uuid::Uuid;
+use serde::Serialize;
 
 const MAX_NVARCHAR_SIZE: usize = 1 << 30;
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize)]
 /// A container of a value that can be represented as a TDS value.
 pub enum ColumnData<'a> {
     /// 8-bit integer, signed.

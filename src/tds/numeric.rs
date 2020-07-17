@@ -8,6 +8,7 @@ use bytes::{BufMut, BytesMut};
 pub use rust_decimal::Decimal;
 use std::cmp::PartialEq;
 use std::fmt::{self, Debug, Display, Formatter};
+use serde::{Serialize, Serializer};
 
 /// Represent a sql Decimal / Numeric type. It is stored in a i128 and has a
 /// maximum precision of 38 decimals.
@@ -213,6 +214,17 @@ impl From<Numeric> for i128 {
 impl From<Numeric> for u128 {
     fn from(n: Numeric) -> u128 {
         n.int_part() as u128
+    }
+}
+
+impl Serialize for Numeric {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        serializer.serialize_f64(
+            self.dec_part() as f64 / self.pow_scale() as f64 + self.int_part() as f64
+        )
     }
 }
 

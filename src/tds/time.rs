@@ -22,7 +22,6 @@
 //! [`NaiveDateTime`]: chrono/struct.NaiveDateTime.html
 //! [`DateTime`]: chrono/struct.DateTime.html
 
-#[cfg(feature = "chrono")]
 pub mod chrono;
 
 use crate::{tds::codec::Encode, SqlReadBytes};
@@ -31,6 +30,13 @@ use byteorder::{ByteOrder, LittleEndian};
 use bytes::{BufMut, BytesMut};
 #[cfg(feature = "tds73")]
 use futures::io::AsyncReadExt;
+use serde::{Serialize, Serializer};
+use std::time::{UNIX_EPOCH, Duration};
+
+const DAYS_BETWEEN_1_AND_1970: u32 = 719164;
+const DAYS_BETWEEN_1900_AND_1970: i32 = 25555;
+const SECONDS_IN_HOUR: i32 = 60 * 60;
+const SECONDS_IN_DAY: i32 = 24 * SECONDS_IN_HOUR;
 
 /// A presentation of `datetime` type in the server.
 ///
@@ -73,6 +79,12 @@ impl DateTime {
             seconds_fragments: src.read_u32_le().await?,
         })
     }
+
+    pub fn timestamp(self) -> u64 {
+        let days = self.days - DAYS_BETWEEN_1900_AND_1970;
+        let days_in_seconds = days * SECONDS_IN_DAY;
+        (days_in_seconds as f64 * ((self.seconds_fragments as f64) / 300.0)) as u64
+    }
 }
 
 impl Encode<BytesMut> for DateTime {
@@ -81,6 +93,17 @@ impl Encode<BytesMut> for DateTime {
         dst.put_u32_le(self.seconds_fragments);
 
         Ok(())
+    }
+}
+
+impl Serialize for DateTime {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        let timestamp = UNIX_EPOCH + Duration::from_secs(self.timestamp());
+        let datetime = chrono::DateTime::<chrono::Utc>::from(timestamp);
+        serializer.serialize_str(&datetime.format("%Y-%m-%dT%H:%M:%S").to_string())
     }
 }
 
@@ -124,6 +147,12 @@ impl SmallDateTime {
             seconds_fragments: src.read_u16_le().await?,
         })
     }
+
+    pub fn timestamp(self) -> u64 {
+        let days = self.days as i32 - DAYS_BETWEEN_1900_AND_1970;
+        let days_in_seconds = days * SECONDS_IN_DAY;
+        (days_in_seconds as f64 * ((self.seconds_fragments as f64) / 300.0)) as u64
+    }
 }
 
 impl Encode<BytesMut> for SmallDateTime {
@@ -132,6 +161,17 @@ impl Encode<BytesMut> for SmallDateTime {
         dst.put_u16_le(self.seconds_fragments);
 
         Ok(())
+    }
+}
+
+impl Serialize for SmallDateTime {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        let timestamp = UNIX_EPOCH + Duration::from_secs(self.timestamp());
+        let datetime = chrono::DateTime::<chrono::Utc>::from(timestamp);
+        serializer.serialize_str(&datetime.format("%Y-%m-%dT%H:%M:%S").to_string())
     }
 }
 
@@ -171,6 +211,17 @@ impl Date {
         src.read_exact(&mut bytes[..3]).await?;
         Ok(Self::new(LittleEndian::read_u32(&bytes)))
     }
+
+    pub fn timestamp(self) -> u64 {
+        let days = self.0 - DAYS_BETWEEN_1_AND_1970;
+        (days * (SECONDS_IN_DAY as u32)) as u64
+    }
+
+    pub fn repr(self) -> String {
+        let timestamp = UNIX_EPOCH + Duration::from_secs(self.timestamp());
+        let datetime = chrono::DateTime::<chrono::Utc>::from(timestamp);
+        datetime.format("%Y-%m-%d").to_string()
+    }
 }
 
 #[cfg(feature = "tds73")]
@@ -182,6 +233,15 @@ impl Encode<BytesMut> for Date {
         dst.extend_from_slice(&tmp[0..3]);
 
         Ok(())
+    }
+}
+
+impl Serialize for Date {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        serializer.serialize_str(&self.repr())
     }
 }
 
@@ -263,6 +323,15 @@ impl Time {
             scale: n as u8,
         })
     }
+
+    pub fn repr(self) -> String {
+        let total_seconds = self.increments as f64 / 10f64.powi(self.scale as i32);
+        let hours = total_seconds as i32 / SECONDS_IN_HOUR;
+        let hours_in_seconds = hours * SECONDS_IN_HOUR;
+        let minutes = (total_seconds as i32 - hours_in_seconds) / 60;
+        let seconds = total_seconds as i32 - hours_in_seconds - (minutes * 60);
+        format!("{}:{}:{}", hours, minutes, seconds)
+    }
 }
 
 #[cfg(feature = "tds73")]
@@ -287,6 +356,15 @@ impl Encode<BytesMut> for Time {
         }
 
         Ok(())
+    }
+}
+
+impl Serialize for Time {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        serializer.serialize_str(&self.repr())
     }
 }
 
@@ -333,6 +411,10 @@ impl DateTime2 {
 
         Ok(Self::new(date, time))
     }
+
+    pub fn repr(self) -> String {
+        format!("{}T{}", self.date().repr(), self.time().repr())
+    }
 }
 
 #[cfg(feature = "tds73")]
@@ -346,6 +428,15 @@ impl Encode<BytesMut> for DateTime2 {
         dst.extend_from_slice(&tmp[0..3]);
 
         Ok(())
+    }
+}
+
+impl Serialize for DateTime2 {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        serializer.serialize_str(&self.repr())
     }
 }
 
@@ -400,5 +491,15 @@ impl Encode<BytesMut> for DateTimeOffset {
         dst.put_i16_le(self.offset);
 
         Ok(())
+    }
+}
+
+impl Serialize for DateTimeOffset {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        // TODO: Fix serialization to include offset
+        serializer.serialize_str(&self.datetime2().repr())
     }
 }
