@@ -65,6 +65,9 @@ impl<'a> QueryStream<'a> {
 
                     return Ok(());
                 }
+                Some(ReceivedToken::Info(_)) => {
+                    return Ok(());
+                }
                 _ => {
                     if self.columns().is_none() {
                         self.state = QueryStreamState::Done;
