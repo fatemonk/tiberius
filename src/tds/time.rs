@@ -34,7 +34,7 @@ use serde::{Serialize, Serializer};
 use std::time::{UNIX_EPOCH, Duration};
 
 const DAYS_BETWEEN_1_AND_1970: u32 = 719164;
-const DAYS_BETWEEN_1900_AND_1970: i32 = 25555;
+const DAYS_BETWEEN_1900_AND_1970: i32 = 25567;
 const SECONDS_IN_HOUR: i32 = 60 * 60;
 const SECONDS_IN_DAY: i32 = 24 * SECONDS_IN_HOUR;
 
@@ -83,7 +83,7 @@ impl DateTime {
     pub fn timestamp(self) -> u64 {
         let days = self.days - DAYS_BETWEEN_1900_AND_1970;
         let days_in_seconds = days * SECONDS_IN_DAY;
-        (days_in_seconds as f64 * ((self.seconds_fragments as f64) / 300.0)) as u64
+        (days_in_seconds as f64 + ((self.seconds_fragments as f64) / 300.0)) as u64
     }
 }
 
