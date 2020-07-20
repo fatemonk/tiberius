@@ -3,15 +3,18 @@ pub use crate::tds::codec::TokenError;
 pub use std::io::ErrorKind as IoErrorKind;
 use std::{borrow::Cow, convert::Infallible, io};
 use thiserror::Error;
+use serde::Serialize;
 
 /// A unified error enum that contains several errors that might occurr during
 /// the lifecycle of this driver
-#[derive(Debug, Clone, Error)]
+#[derive(Debug, Clone, Error, Serialize)]
+#[serde(tag = "type")]
 pub enum Error {
     #[error("An error occured during the attempt of performing I/O: {}", message)]
     /// An error occured when performing I/O to the server.
     Io {
         /// A list specifying general categories of I/O error.
+        #[serde(skip)]
         kind: IoErrorKind,
         /// The error description.
         message: String,
@@ -33,6 +36,7 @@ pub enum Error {
     Utf16,
     #[error("Error parsing an integer: {}", _0)]
     /// Tried to parse an integer that was not an integer.
+    #[serde(skip)]
     ParseInt(std::num::ParseIntError),
     #[error("Token error: {}", _0)]
     /// An error returned by the server.

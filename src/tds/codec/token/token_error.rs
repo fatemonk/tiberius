@@ -3,8 +3,9 @@ use crate::{
     SqlReadBytes,
 };
 use std::fmt;
+use serde::Serialize;
 
-#[derive(Clone, Debug, thiserror::Error)]
+#[derive(Clone, Debug, thiserror::Error, Serialize)]
 /// An error token returned from the server.
 pub struct TokenError {
     /// ErrorCode
