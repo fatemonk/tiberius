@@ -330,7 +330,7 @@ impl Time {
         let hours_in_seconds = hours * SECONDS_IN_HOUR;
         let minutes = (total_seconds as i32 - hours_in_seconds) / 60;
         let seconds = total_seconds as i32 - hours_in_seconds - (minutes * 60);
-        format!("{}:{}:{}", hours, minutes, seconds)
+        format!("{:02}:{:02}:{:02}", hours, minutes, seconds)
     }
 }
 
