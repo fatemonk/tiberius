@@ -33,7 +33,7 @@ use futures::io::AsyncReadExt;
 use serde::{Serialize, Serializer};
 use std::time::{UNIX_EPOCH, Duration};
 
-const DAYS_BETWEEN_1_AND_1970: u32 = 719162;
+const DAYS_BETWEEN_1_AND_1970: i64 = 719162;
 const DAYS_BETWEEN_1900_AND_1970: i32 = 25567;
 const SECONDS_IN_HOUR: i32 = 60 * 60;
 const SECONDS_IN_DAY: i32 = 24 * SECONDS_IN_HOUR;
@@ -212,14 +212,19 @@ impl Date {
         Ok(Self::new(LittleEndian::read_u32(&bytes)))
     }
 
-    pub fn timestamp(self) -> u64 {
-        let days = self.0 - DAYS_BETWEEN_1_AND_1970;
-        (days * (SECONDS_IN_DAY as u32)) as u64
+    pub fn timestamp(self) -> i64 {
+        (self.0 as i64 - DAYS_BETWEEN_1_AND_1970) * (SECONDS_IN_DAY as i64)
     }
 
     pub fn repr(self) -> String {
-        let timestamp = UNIX_EPOCH + Duration::from_secs(self.timestamp());
-        let datetime = chrono::DateTime::<chrono::Utc>::from(timestamp);
+        let timestamp = self.timestamp();
+        let duration = Duration::from_secs(timestamp.abs() as u64);
+        let datetime = chrono::DateTime::<chrono::Utc>::from(
+            match timestamp >= 0 {
+                true => UNIX_EPOCH + duration,
+                false => UNIX_EPOCH - duration
+            }
+        );
         datetime.format("%Y-%m-%d").to_string()
     }
 }
