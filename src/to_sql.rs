@@ -4,6 +4,7 @@ use crate::{
 };
 use std::borrow::Cow;
 use uuid::Uuid;
+use serde_json::Value as JsonValue;
 
 /// A conversion trait to a TDS type.
 ///
@@ -91,4 +92,19 @@ to_sql!(self_,
         Numeric: (ColumnData::Numeric, *self_);
         XmlData: (ColumnData::Xml, Cow::Borrowed(self_));
         Uuid: (ColumnData::Guid, *self_);
+        JsonValue: (|someval| {
+            match someval {
+                Some(val) => match val {
+                    JsonValue::Null => ColumnData::Bit(None),
+                    JsonValue::Bool(v) => ColumnData::Bit(Some(v)),
+                    JsonValue::Number(v)
+                        if v.is_i64() => ColumnData::I64(Some(v.as_i64().unwrap())),
+                    JsonValue::Number(v)
+                        if v.is_f64() => ColumnData::F64(Some(v.as_f64().unwrap())),
+                    JsonValue::String(v) => ColumnData::String(Some(Cow::from(v))),
+                    _ => unimplemented!()
+                },
+                None => unreachable!()
+            }
+        }, self_.clone());
 );
