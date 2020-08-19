@@ -253,10 +253,7 @@ impl Serialize for Date {
     where
         S: Serializer,
     {
-        let datetime = dt_from_timestamp(self.timestamp());
-        serializer.serialize_str(
-            &datetime.format("%Y-%m-%dT%H:%M:%S").to_string()
-        )
+        serializer.serialize_str(&self.repr())
     }
 }
 
